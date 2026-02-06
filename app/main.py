@@ -180,10 +180,10 @@ def registrar_resultado(
     if not premio:
         raise HTTPException(status_code=404, detail="Premio no encontrado")
     
-    if len(resultado_in.numeros_ganadores) != premio.cantidad_balotas:
+    if len(resultado_in.numeros_ganadores) != premio.cantidad_balotas+1:
          raise HTTPException(
              status_code=400, 
-             detail=f"El premio '{premio.titulo}' requiere exactamente {premio.cantidad_balotas} cifras."
+             detail=f"El premio '{premio.titulo}' requiere exactamente {premio.cantidad_balotas+1} cifras."
          )
 
     db_resultado = models.Resultado(
