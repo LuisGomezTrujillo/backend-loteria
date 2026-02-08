@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware 
 
+# Asegúrate de que las importaciones relativas funcionen según tu estructura de carpetas
 from .database import create_db_and_tables, get_session
 from . import models, schemas
 
@@ -10,7 +11,7 @@ app = FastAPI(title="Lotería de Manizales API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En desarrollo puedes usar "*" para evitar bloqueos
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,9 +84,11 @@ def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = De
     if not premio:
         raise HTTPException(status_code=404, detail=f"Premio '{resultado_in.premio_titulo}' no existe")
 
-    # 3. Validar longitud
-    if len(resultado_in.numeros_ganadores) != premio.cantidad_balotas:
-         raise HTTPException(status_code=400, detail="Cantidad de cifras incorrecta")
+    # 3. Validar longitud (CORRECCIÓN APLICADA)
+    # Se cambió la validación estricta (!=) por una validación de mínimo (<).
+    # Esto permite que si la BD dice 4 balotas, pero enviamos 7 (4 numero + 3 serie), lo acepte.
+    if len(resultado_in.numeros_ganadores) < premio.cantidad_balotas:
+         raise HTTPException(status_code=400, detail=f"Faltan cifras. Se esperan al menos {premio.cantidad_balotas}")
 
     # 4. Crear registro
     db_resultado = models.Resultado(
@@ -117,3 +120,4 @@ def consultar_resultados_publico(numero_sorteo: int, session: Session = Depends(
         ) for res, prem in data
     ]
     return schemas.SorteoPublicoRead(numero_sorteo=sorteo.numero_sorteo, fecha=sorteo.fecha, resultados=lista_resultados)
+
