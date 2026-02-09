@@ -121,3 +121,45 @@ def consultar_resultados_publico(numero_sorteo: int, session: Session = Depends(
     ]
     return schemas.SorteoPublicoRead(numero_sorteo=sorteo.numero_sorteo, fecha=sorteo.fecha, resultados=lista_resultados)
 
+# ... (Manten todo el código anterior hasta los endpoints de resultados)
+
+# --- NUEVOS ENDPOINTS PARA CRUD (Editar / Borrar) ---
+
+@app.delete("/resultados/{sorteo_id}/{premio_id}", tags=["Resultados"])
+def eliminar_resultado(sorteo_id: int, premio_id: int, session: Session = Depends(get_session)):
+    statement = select(models.Resultado).where(
+        models.Resultado.sorteo_id == sorteo_id,
+        models.Resultado.premio_id == premio_id
+    )
+    resultado = session.exec(statement).first()
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="Resultado no encontrado")
+    
+    session.delete(resultado)
+    session.commit()
+    return {"ok": True, "message": "Resultado eliminado"}
+
+@app.put("/resultados/{sorteo_id}/{premio_id}", response_model=schemas.ResultadoRead, tags=["Resultados"])
+def actualizar_resultado(sorteo_id: int, premio_id: int, numeros_nuevos: str, session: Session = Depends(get_session)):
+    # 1. Buscar el resultado existente
+    statement = select(models.Resultado).where(
+        models.Resultado.sorteo_id == sorteo_id,
+        models.Resultado.premio_id == premio_id
+    )
+    resultado = session.exec(statement).first()
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="Resultado no encontrado para editar")
+
+    # 2. Validar longitud con el premio
+    premio = session.get(models.Premio, premio_id)
+    if len(numeros_nuevos) < premio.cantidad_balotas:
+         raise HTTPException(status_code=400, detail=f"Faltan cifras. Se esperan al menos {premio.cantidad_balotas}")
+
+    # 3. Actualizar
+    resultado.numeros_ganadores = numeros_nuevos
+    session.add(resultado)
+    session.commit()
+    session.refresh(resultado)
+    return resultado
