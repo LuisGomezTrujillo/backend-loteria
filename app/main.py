@@ -19,20 +19,18 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 
 # ✅ FIX 2: CORS robusto — acepta tu dominio de Vercel y cualquier preview/rama
 # Cambia "frontend-loteria" por el nombre real de tu proyecto en Vercel si es diferente
+# --- CONFIGURACIÓN CORS BLINDADA ---
 origins = [
-    "https://frontend-loteria.vercel.app/",
     "http://localhost:3000",
-    "*"
+    "https://frontend-loteria.vercel.app" # <--- Tu URL de Vercel SIN barra al final
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://frontend-loteria.*\.vercel\.app",  # cubre previews
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 
