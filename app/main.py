@@ -22,6 +22,7 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 origins = [
     "https://frontend-loteria.vercel.app/",
     "http://localhost:3000",
+    "*"
 ]
 
 app.add_middleware(
