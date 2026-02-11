@@ -98,14 +98,34 @@ def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoCreate, session: 
     session.refresh(sorteo)
     return sorteo
 
-@app.delete("/sorteos/{sorteo_id}", tags=["Sorteos"])
+@app.delete("/sorteos/{sorteo_id}/", tags=["Sorteos"])
 def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
-    sorteo = session.get(models.Sorteo, sorteo_id)
-    if not sorteo:
+    # 1. Buscar el sorteo
+    db_sorteo = session.get(models.Sorteo, sorteo_id)
+    
+    if not db_sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
-    session.delete(sorteo)
-    session.commit()
-    return {"ok": True, "message": "Sorteo eliminado"}
+
+    try:
+        # 2. BORRAR HIJOS PRIMERO (Resultados)
+        # Buscamos todos los resultados que pertenezcan a este sorteo_id
+        statement_res = select(models.Resultado).where(models.Resultado.sorteo_id == sorteo_id)
+        resultados_asociados = session.exec(statement_res).all()
+        
+        for res in resultados_asociados:
+            session.delete(res)
+
+        # 3. BORRAR EL PADRE (Sorteo)
+        session.delete(db_sorteo)
+        
+        # 4. GUARDAR CAMBIOS
+        session.commit()
+        
+        return {"ok": True, "message": f"Sorteo {sorteo_id} y sus resultados eliminados."}
+        
+    except Exception as e:
+        session.rollback() # Si algo falla, deshace los cambios para no corromper la DB
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
 # --- ENDPOINT DE RESULTADOS ---
