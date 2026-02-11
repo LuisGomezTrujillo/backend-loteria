@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import date
 from sqlmodel import SQLModel
 
+
 # --- SCHEMAS DE PREMIO ---
 class PremioBase(SQLModel):
     titulo: str
@@ -14,6 +15,7 @@ class PremioCreate(PremioBase):
 class PremioRead(PremioBase):
     id: int
     plan_id: int
+
 
 # --- SCHEMAS DE PLAN DE PREMIOS ---
 class PlanBase(SQLModel):
@@ -30,6 +32,7 @@ class PlanRead(PlanBase):
 class PlanUpdate(SQLModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
+
 
 # --- SCHEMAS DE SORTEO ---
 class SorteoBase(SQLModel):
@@ -48,11 +51,12 @@ class SorteoUpdate(SQLModel):
     fecha: Optional[date] = None
     plan_id: Optional[int] = None
 
+
 # --- SCHEMAS DE RESULTADO ---
 class ResultadoCreate(SQLModel):
     sorteo_id: int
-    premio_titulo: str  # Cambio: Recibimos el texto del premio
-    numeros_ganadores: str # Asegúrate que coincida con el nombre en frontend
+    premio_titulo: str
+    numeros_ganadores: str
 
 class ResultadoRead(SQLModel):
     id: int
@@ -60,13 +64,16 @@ class ResultadoRead(SQLModel):
     premio_id: int
     numeros_ganadores: str
 
+
 # --- CONSULTA PÚBLICA ---
 class ResultadoPublico(SQLModel):
     premio: str
     valor: str
-    numero_ganador: str
+    # ✅ FIX: Optional porque un sorteo puede no tener resultados aún
+    # El frontend ya maneja null con el placeholder "----"
+    numero_ganador: Optional[str] = None
 
 class SorteoPublicoRead(SQLModel):
     numero_sorteo: int
     fecha: date
-    resultados: List[ResultadoPublico]
+    resultados: List[ResultadoPublico] = []

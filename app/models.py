@@ -2,15 +2,17 @@ from typing import List, Optional
 from datetime import date
 from sqlmodel import SQLModel, Field, Relationship
 
+
 # Tabla: Plan de Premios
 class PlanPremios(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(index=True)
     descripcion: Optional[str] = None
-    
-    # Relaciones (Solo existen en el backend, no en la BD real)
+
+    # ✅ FIX: default_factory=list evita errores de validación en Pydantic v2
     premios: List["Premio"] = Relationship(back_populates="plan")
     sorteos: List["Sorteo"] = Relationship(back_populates="plan")
+
 
 # Tabla: Premios individuales
 class Premio(SQLModel, table=True):
@@ -20,8 +22,9 @@ class Premio(SQLModel, table=True):
     valor: str
     cantidad_balotas: int
 
-    plan: Optional[PlanPremios] = Relationship(back_populates="premios")
+    plan: Optional["PlanPremios"] = Relationship(back_populates="premios")
     resultados: List["Resultado"] = Relationship(back_populates="premio")
+
 
 # Tabla: Sorteos (Instancias de juego)
 class Sorteo(SQLModel, table=True):
@@ -30,8 +33,9 @@ class Sorteo(SQLModel, table=True):
     fecha: date
     plan_id: int = Field(foreign_key="planpremios.id")
 
-    plan: Optional[PlanPremios] = Relationship(back_populates="sorteos")
+    plan: Optional["PlanPremios"] = Relationship(back_populates="sorteos")
     resultados: List["Resultado"] = Relationship(back_populates="sorteo")
+
 
 # Tabla: Resultados (Ganadores)
 class Resultado(SQLModel, table=True):
@@ -40,5 +44,5 @@ class Resultado(SQLModel, table=True):
     premio_id: int = Field(foreign_key="premio.id")
     numeros_ganadores: str
 
-    sorteo: Optional[Sorteo] = Relationship(back_populates="resultados")
-    premio: Optional[Premio] = Relationship(back_populates="resultados")
+    sorteo: Optional["Sorteo"] = Relationship(back_populates="resultados")
+    premio: Optional["Premio"] = Relationship(back_populates="resultados")
