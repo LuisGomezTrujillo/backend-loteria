@@ -11,16 +11,17 @@ app = FastAPI(title="Lotería de Manizales API")
 
 
 origins = [
-    "http://localhost:3000",
-    "https://frontend-loteria.vercel.app/"
+    "http://localhost:3000",                   # Para cuando pruebas en tu PC
+    "https://frontend-loteria.vercel.app",     # <--- TU FRONTEND EN VERCEL (Importante)
+    "*"                                        # Comodín (déjalo por si acaso)
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, 
+    allow_origins=origins,      # Usamos la lista de arriba
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],        # Permitir todos los métodos (GET, POST, PUT, DELETE, OPTIONS)
+    allow_headers=["*"],        # Permitir todos los headers
 )
 
 
