@@ -19,8 +19,8 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 # --- CONFIGURACIÓN CORS ---
 origins = [
     "http://localhost:3000",
-    "https://frontend-loteria.vercel.app", # Ajusta según tu dominio real
-    "*" # Útil para desarrollo, restringe en producción si es necesario
+    "https://frontend-loteria.vercel.app", 
+    "*"
 ]
 
 app.add_middleware(
@@ -32,7 +32,9 @@ app.add_middleware(
 )
 
 
+# ==========================================
 # --- ENDPOINTS DE PLANES ---
+# ==========================================
 
 @app.post("/planes/", response_model=schemas.PlanRead, tags=["Planes"])
 def crear_plan(plan_in: schemas.PlanCreate, session: Session = Depends(get_session)):
@@ -42,7 +44,8 @@ def crear_plan(plan_in: schemas.PlanCreate, session: Session = Depends(get_sessi
     session.refresh(db_plan)
 
     for premio_in in plan_in.premios:
-        db_premio = models.Premio(**premio_in.dict(), plan_id=db_plan.id)
+        # ACTUALIZACIÓN PYDANTIC V2: dict() -> model_dump()
+        db_premio = models.Premio(**premio_in.model_dump(), plan_id=db_plan.id)
         session.add(db_premio)
 
     session.commit()
@@ -60,12 +63,60 @@ def obtener_plan(plan_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Plan no encontrado")
     return plan
 
+# NUEVO ENDPOINT: Actualizar Plan
+@app.put("/planes/{plan_id}", response_model=schemas.PlanRead, tags=["Planes"])
+def actualizar_plan(plan_id: int, plan_in: schemas.PlanUpdate, session: Session = Depends(get_session)):
+    plan_db = session.get(models.PlanPremios, plan_id)
+    if not plan_db:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+    
+    # ACTUALIZACIÓN PYDANTIC V2: dict() -> model_dump()
+    plan_data = plan_in.model_dump(exclude_unset=True)
+    for key, value in plan_data.items():
+        setattr(plan_db, key, value)
+        
+    session.add(plan_db)
+    session.commit()
+    session.refresh(plan_db)
+    return plan_db
 
+# NUEVO ENDPOINT: Eliminar Plan
+@app.delete("/planes/{plan_id}", tags=["Planes"])
+def eliminar_plan(plan_id: int, session: Session = Depends(get_session)):
+    plan_db = session.get(models.PlanPremios, plan_id)
+    if not plan_db:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+
+    # Validación: No borrar si el plan ya está siendo usado en sorteos
+    sorteos_asociados = session.exec(select(models.Sorteo).where(models.Sorteo.plan_id == plan_id)).first()
+    if sorteos_asociados:
+        raise HTTPException(
+            status_code=400, 
+            detail="No se puede eliminar este plan porque tiene sorteos históricos asociados."
+        )
+
+    try:
+        # Borrar primero los premios asociados para mantener integridad (Cascade manual)
+        premios_asociados = session.exec(select(models.Premio).where(models.Premio.plan_id == plan_id)).all()
+        for premio in premios_asociados:
+            session.delete(premio)
+            
+        session.delete(plan_db)
+        session.commit()
+        return {"ok": True, "message": f"Plan {plan_id} y sus premios eliminados."}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+# ==========================================
 # --- ENDPOINTS DE SORTEOS ---
+# ==========================================
 
 @app.post("/sorteos/", response_model=schemas.SorteoRead, tags=["Sorteos"])
 def crear_sorteo(sorteo_in: schemas.SorteoCreate, session: Session = Depends(get_session)):
-    db_sorteo = models.Sorteo.from_orm(sorteo_in)
+    # ACTUALIZACIÓN PYDANTIC V2: from_orm() -> model_validate()
+    db_sorteo = models.Sorteo.model_validate(sorteo_in)
     session.add(db_sorteo)
     session.commit()
     session.refresh(db_sorteo)
@@ -83,13 +134,16 @@ def obtener_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
     return sorteo
 
 @app.put("/sorteos/{sorteo_id}", response_model=schemas.SorteoRead, tags=["Sorteos"])
-def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoCreate, session: Session = Depends(get_session)):
+def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoUpdate, session: Session = Depends(get_session)):
     sorteo = session.get(models.Sorteo, sorteo_id)
     if not sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
-    sorteo_data = sorteo_in.dict(exclude_unset=True)
+        
+    # ACTUALIZACIÓN PYDANTIC V2: dict() -> model_dump()
+    sorteo_data = sorteo_in.model_dump(exclude_unset=True)
     for key, value in sorteo_data.items():
         setattr(sorteo, key, value)
+        
     session.add(sorteo)
     session.commit()
     session.refresh(sorteo)
@@ -115,7 +169,9 @@ def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
+# ==========================================
 # --- ENDPOINT DE RESULTADOS ---
+# ==========================================
 
 @app.post("/resultados/", response_model=schemas.ResultadoRead, tags=["Resultados"])
 def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = Depends(get_session)):
@@ -145,7 +201,6 @@ def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = De
     session.refresh(db_resultado)
     return db_resultado
 
-# CAMBIO: numero_sorteo ahora es str en la URL
 @app.get("/sorteos/{numero_sorteo}/publico", response_model=schemas.SorteoPublicoRead, tags=["Consulta Pública"])
 def consultar_resultados_publico(numero_sorteo: str, session: Session = Depends(get_session)):
     statement = select(models.Sorteo).where(models.Sorteo.numero_sorteo == numero_sorteo)
@@ -162,8 +217,8 @@ def consultar_resultados_publico(numero_sorteo: str, session: Session = Depends(
 
     lista_resultados = [
         schemas.ResultadoPublico(
-            id=res.id,              # Devolvemos el ID del resultado
-            premio_id=prem.id,      # Devolvemos ID del premio
+            id=res.id,              
+            premio_id=prem.id,      
             premio=prem.titulo,
             valor=prem.valor,
             numero_ganador=res.numeros_ganadores

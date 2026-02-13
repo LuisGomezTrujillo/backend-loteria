@@ -2,7 +2,6 @@ from typing import List, Optional
 from datetime import date
 from sqlmodel import SQLModel
 
-
 # --- SCHEMAS DE PREMIO ---
 class PremioBase(SQLModel):
     titulo: str
@@ -15,7 +14,6 @@ class PremioCreate(PremioBase):
 class PremioRead(PremioBase):
     id: int
     plan_id: int
-
 
 # --- SCHEMAS DE PLAN DE PREMIOS ---
 class PlanBase(SQLModel):
@@ -33,10 +31,9 @@ class PlanUpdate(SQLModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
 
-
 # --- SCHEMAS DE SORTEO ---
 class SorteoBase(SQLModel):
-    numero_sorteo: str  # CAMBIO: int -> str
+    numero_sorteo: str
     fecha: date
     plan_id: int
 
@@ -51,7 +48,6 @@ class SorteoUpdate(SQLModel):
     fecha: Optional[date] = None
     plan_id: Optional[int] = None
 
-
 # --- SCHEMAS DE RESULTADO ---
 class ResultadoCreate(SQLModel):
     sorteo_id: int
@@ -64,16 +60,15 @@ class ResultadoRead(SQLModel):
     premio_id: int
     numeros_ganadores: str
 
-
 # --- CONSULTA PÚBLICA ---
 class ResultadoPublico(SQLModel):
-    id: Optional[int] = None        # Nuevo: Para poder borrar/editar desde el front
-    premio_id: Optional[int] = None # Nuevo: ID del premio
+    id: Optional[int] = None
+    premio_id: Optional[int] = None
     premio: str
     valor: str
     numero_ganador: Optional[str] = None
 
 class SorteoPublicoRead(SQLModel):
-    numero_sorteo: str  # CAMBIO: int -> str
+    numero_sorteo: str
     fecha: date
     resultados: List[ResultadoPublico] = []

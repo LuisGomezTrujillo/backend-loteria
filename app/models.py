@@ -27,7 +27,6 @@ class Premio(SQLModel, table=True):
 # Tabla: Sorteos (Instancias de juego)
 class Sorteo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    # CAMBIO IMPORTANTE: numero_sorteo es String para aceptar "001", "Extra", etc.
     numero_sorteo: str = Field(unique=True, index=True)
     fecha: date
     plan_id: int = Field(foreign_key="planpremios.id")
