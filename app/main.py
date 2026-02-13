@@ -3,12 +3,12 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlmodel import Session, select
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+import pytz
+from datetime import datetime
 
 from .database import create_db_and_tables, get_session
 from . import models, schemas
 
-
-# ✅ FIX 1: Usar 'lifespan' en lugar del deprecado @app.on_event("startup")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
@@ -16,13 +16,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 
-
-# ✅ FIX 2: CORS robusto — acepta tu dominio de Vercel y cualquier preview/rama
-# Cambia "frontend-loteria" por el nombre real de tu proyecto en Vercel si es diferente
-# --- CONFIGURACIÓN CORS BLINDADA ---
+# --- CONFIGURACIÓN CORS ---
 origins = [
     "http://localhost:3000",
-    "https://frontend-loteria.vercel.app" # <--- Tu URL de Vercel SIN barra al final
+    "https://frontend-loteria.vercel.app", # Ajusta según tu dominio real
+    "*" # Útil para desarrollo, restringe en producción si es necesario
 ]
 
 app.add_middleware(
@@ -84,7 +82,6 @@ def obtener_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
     return sorteo
 
-# ✅ FIX 3: Endpoint PUT que faltaba — ManageSorteo.js lo llama pero no existía
 @app.put("/sorteos/{sorteo_id}", response_model=schemas.SorteoRead, tags=["Sorteos"])
 def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoCreate, session: Session = Depends(get_session)):
     sorteo = session.get(models.Sorteo, sorteo_id)
@@ -100,31 +97,21 @@ def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoCreate, session: 
 
 @app.delete("/sorteos/{sorteo_id}/", tags=["Sorteos"])
 def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
-    # 1. Buscar el sorteo
     db_sorteo = session.get(models.Sorteo, sorteo_id)
-    
     if not db_sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
 
     try:
-        # 2. BORRAR HIJOS PRIMERO (Resultados)
-        # Buscamos todos los resultados que pertenezcan a este sorteo_id
         statement_res = select(models.Resultado).where(models.Resultado.sorteo_id == sorteo_id)
         resultados_asociados = session.exec(statement_res).all()
-        
         for res in resultados_asociados:
             session.delete(res)
 
-        # 3. BORRAR EL PADRE (Sorteo)
         session.delete(db_sorteo)
-        
-        # 4. GUARDAR CAMBIOS
         session.commit()
-        
-        return {"ok": True, "message": f"Sorteo {sorteo_id} y sus resultados eliminados."}
-        
+        return {"ok": True, "message": f"Sorteo {sorteo_id} eliminado."}
     except Exception as e:
-        session.rollback() # Si algo falla, deshace los cambios para no corromper la DB
+        session.rollback()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
@@ -146,10 +133,7 @@ def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = De
         raise HTTPException(status_code=404, detail=f"Premio '{resultado_in.premio_titulo}' no existe")
 
     if len(resultado_in.numeros_ganadores) < premio.cantidad_balotas:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Faltan cifras. Se esperan al menos {premio.cantidad_balotas}"
-        )
+        raise HTTPException(status_code=400, detail=f"Faltan cifras. Se esperan {premio.cantidad_balotas}")
 
     db_resultado = models.Resultado(
         sorteo_id=resultado_in.sorteo_id,
@@ -161,8 +145,9 @@ def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = De
     session.refresh(db_resultado)
     return db_resultado
 
+# CAMBIO: numero_sorteo ahora es str en la URL
 @app.get("/sorteos/{numero_sorteo}/publico", response_model=schemas.SorteoPublicoRead, tags=["Consulta Pública"])
-def consultar_resultados_publico(numero_sorteo: int, session: Session = Depends(get_session)):
+def consultar_resultados_publico(numero_sorteo: str, session: Session = Depends(get_session)):
     statement = select(models.Sorteo).where(models.Sorteo.numero_sorteo == numero_sorteo)
     sorteo = session.exec(statement).first()
     if not sorteo:
@@ -177,6 +162,8 @@ def consultar_resultados_publico(numero_sorteo: int, session: Session = Depends(
 
     lista_resultados = [
         schemas.ResultadoPublico(
+            id=res.id,              # Devolvemos el ID del resultado
+            premio_id=prem.id,      # Devolvemos ID del premio
             premio=prem.titulo,
             valor=prem.valor,
             numero_ganador=res.numeros_ganadores
@@ -219,10 +206,7 @@ def actualizar_resultado(
 
     premio = session.get(models.Premio, premio_id)
     if len(numeros_nuevos) < premio.cantidad_balotas:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Faltan cifras. Se esperan al menos {premio.cantidad_balotas}"
-        )
+        raise HTTPException(status_code=400, detail=f"Faltan cifras.")
 
     resultado.numeros_ganadores = numeros_nuevos
     session.add(resultado)

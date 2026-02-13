@@ -2,14 +2,12 @@ from typing import List, Optional
 from datetime import date
 from sqlmodel import SQLModel, Field, Relationship
 
-
 # Tabla: Plan de Premios
 class PlanPremios(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(index=True)
     descripcion: Optional[str] = None
 
-    # ✅ FIX: default_factory=list evita errores de validación en Pydantic v2
     premios: List["Premio"] = Relationship(back_populates="plan")
     sorteos: List["Sorteo"] = Relationship(back_populates="plan")
 
@@ -29,7 +27,8 @@ class Premio(SQLModel, table=True):
 # Tabla: Sorteos (Instancias de juego)
 class Sorteo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    numero_sorteo: int = Field(unique=True, index=True)
+    # CAMBIO IMPORTANTE: numero_sorteo es String para aceptar "001", "Extra", etc.
+    numero_sorteo: str = Field(unique=True, index=True)
     fecha: date
     plan_id: int = Field(foreign_key="planpremios.id")
 

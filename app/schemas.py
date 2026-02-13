@@ -36,7 +36,7 @@ class PlanUpdate(SQLModel):
 
 # --- SCHEMAS DE SORTEO ---
 class SorteoBase(SQLModel):
-    numero_sorteo: int
+    numero_sorteo: str  # CAMBIO: int -> str
     fecha: date
     plan_id: int
 
@@ -47,7 +47,7 @@ class SorteoRead(SorteoBase):
     id: int
 
 class SorteoUpdate(SQLModel):
-    numero_sorteo: Optional[int] = None
+    numero_sorteo: Optional[str] = None
     fecha: Optional[date] = None
     plan_id: Optional[int] = None
 
@@ -67,13 +67,13 @@ class ResultadoRead(SQLModel):
 
 # --- CONSULTA PÚBLICA ---
 class ResultadoPublico(SQLModel):
+    id: Optional[int] = None        # Nuevo: Para poder borrar/editar desde el front
+    premio_id: Optional[int] = None # Nuevo: ID del premio
     premio: str
     valor: str
-    # ✅ FIX: Optional porque un sorteo puede no tener resultados aún
-    # El frontend ya maneja null con el placeholder "----"
     numero_ganador: Optional[str] = None
 
 class SorteoPublicoRead(SQLModel):
-    numero_sorteo: int
+    numero_sorteo: str  # CAMBIO: int -> str
     fecha: date
     resultados: List[ResultadoPublico] = []
