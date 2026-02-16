@@ -168,6 +168,62 @@ def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
         session.rollback()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
+# ==========================================
+# --- ENDPOINTS DE PREMIOS (CRUD INDIVIDUAL) ---
+# ==========================================
+
+# 1. ADICIONAR un premio a un plan existente
+@app.post("/planes/{plan_id}/premios", response_model=schemas.PremioRead, tags=["Premios"])
+def agregar_premio(plan_id: int, premio_in: schemas.PremioCreate, session: Session = Depends(get_session)):
+    plan = session.get(models.PlanPremios, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+    
+    # Se crea el premio asignándole el plan_id directamente
+    db_premio = models.Premio(**premio_in.model_dump(), plan_id=plan_id)
+    session.add(db_premio)
+    session.commit()
+    session.refresh(db_premio)
+    return db_premio
+
+# 2. EDITAR un premio existente
+@app.put("/premios/{premio_id}", response_model=schemas.PremioRead, tags=["Premios"])
+def actualizar_premio(premio_id: int, premio_in: schemas.PremioUpdate, session: Session = Depends(get_session)):
+    db_premio = session.get(models.Premio, premio_id)
+    if not db_premio:
+        raise HTTPException(status_code=404, detail="Premio no encontrado")
+    
+    premio_data = premio_in.model_dump(exclude_unset=True)
+    for key, value in premio_data.items():
+        setattr(db_premio, key, value)
+        
+    session.add(db_premio)
+    session.commit()
+    session.refresh(db_premio)
+    return db_premio
+
+# 3. ELIMINAR un premio existente
+@app.delete("/premios/{premio_id}", tags=["Premios"])
+def eliminar_premio(premio_id: int, session: Session = Depends(get_session)):
+    db_premio = session.get(models.Premio, premio_id)
+    if not db_premio:
+        raise HTTPException(status_code=404, detail="Premio no encontrado")
+        
+    # VALIDACIÓN DE SEGURIDAD: No borrar si ya hay ganadores registrados
+    resultados_asociados = session.exec(select(models.Resultado).where(models.Resultado.premio_id == premio_id)).first()
+    if resultados_asociados:
+        raise HTTPException(
+            status_code=400, 
+            detail="No se puede eliminar este premio porque ya tiene resultados registrados en un sorteo."
+        )
+        
+    try:
+        session.delete(db_premio)
+        session.commit()
+        return {"ok": True, "message": "Premio eliminado exitosamente"}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # ==========================================
 # --- ENDPOINT DE RESULTADOS ---

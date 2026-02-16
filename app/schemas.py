@@ -72,3 +72,22 @@ class SorteoPublicoRead(SQLModel):
     numero_sorteo: str
     fecha: date
     resultados: List[ResultadoPublico] = []
+
+    # --- SCHEMAS DE PREMIO ---
+class PremioBase(SQLModel):
+    titulo: str
+    valor: str
+    cantidad_balotas: int
+
+class PremioCreate(PremioBase):
+    pass
+
+class PremioRead(PremioBase):
+    id: int
+    plan_id: int
+
+# NUEVO SCHEMA: Para actualizar un premio existente
+class PremioUpdate(SQLModel):
+    titulo: Optional[str] = None
+    valor: Optional[str] = None
+    cantidad_balotas: Optional[int] = None
