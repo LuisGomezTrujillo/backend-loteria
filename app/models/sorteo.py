@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Field, Relationship
 if TYPE_CHECKING:
     from .plan import PlanPremios
     from .resultado import Resultado
+    from .tubo import Tubo
 
 class Sorteo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -14,3 +15,7 @@ class Sorteo(SQLModel, table=True):
 
     plan: Optional["PlanPremios"] = Relationship(back_populates="sorteos")
     resultados: List["Resultado"] = Relationship(back_populates="sorteo")
+    tubo: Optional["Tubo"] = Relationship(
+        back_populates="sorteo",
+        sa_relationship_kwargs={"uselist": False},
+    )
