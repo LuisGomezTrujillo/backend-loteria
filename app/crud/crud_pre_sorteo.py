@@ -6,19 +6,29 @@ from app import models
 MAX_PRUEBAS_POR_SORTEO = 10
 
 
-def obtener_siguiente_numero_prueba(session: Session, sorteo_id: int) -> int:
-    statement = select(models.PreSorteo).where(models.PreSorteo.sorteo_id == sorteo_id)
-    pruebas = session.exec(statement).all()
-    if not pruebas:
-        return 1
-    return max(p.numero_prueba for p in pruebas) + 1
+def obtener_siguiente_numero_prueba(session: Session, sorteo_id: int) -> Optional[int]:
+    """
+    Devuelve el menor numero_prueba disponible (1..10) que NO esté ya usado
+    por este sorteo. Esto hace que, si se borra la Prueba 3, la próxima
+    prueba que se cree vuelva a ocupar el puesto 3 en vez de saltar al 6,
+    manteniendo la secuencia 1..10 sin huecos permanentes.
+
+    Devuelve None si las 10 posiciones ya están ocupadas.
+    """
+    statement = select(models.PreSorteo.numero_prueba).where(models.PreSorteo.sorteo_id == sorteo_id)
+    numeros_usados = set(session.exec(statement).all())
+
+    for candidato in range(1, MAX_PRUEBAS_POR_SORTEO + 1):
+        if candidato not in numeros_usados:
+            return candidato
+    return None
 
 
 def crear_pre_sorteo(session: Session, sorteo_id: int, cantidad_balotas: int = 6) -> models.PreSorteo:
     numero_prueba = obtener_siguiente_numero_prueba(session, sorteo_id)
-    if numero_prueba > MAX_PRUEBAS_POR_SORTEO:
+    if numero_prueba is None:
         raise ValueError(
-            f"Ya se registraron {MAX_PRUEBAS_POR_SORTEO} pruebas para este sorteo (máximo permitido)."
+            f"Ya se registraron las {MAX_PRUEBAS_POR_SORTEO} pruebas posibles para este sorteo."
         )
 
     db_prueba = models.PreSorteo(

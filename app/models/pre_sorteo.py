@@ -2,18 +2,19 @@
 Modelo: PreSorteo
 
 Representa una "Prueba" realizada antes de un sorteo oficial (ensayo del
-sorteo real), SIN relación con el Plan de Premios. Cada sorteo puede tener
+sorteo real), SIN relacion con el Plan de Premios. Cada sorteo puede tener
 entre 5 y 10 pruebas, numeradas secuencialmente de 1 a 10 dentro de ese
-sorteo (numero_prueba, asignado automáticamente al crear).
+sorteo (numero_prueba, asignado automaticamente al crear, rellenando
+huecos si una prueba anterior fue borrada).
 
-Cada prueba produce un único resultado (numeros_ganadores), con la misma
+Cada prueba produce un unico resultado (numeros_ganadores), con la misma
 cantidad de balotas/cifras que se usa en los premios reales del sorteo:
-- 6 balotas -> 7 cifras totales (4 balotas de 1 dígito + serie de 2 dígitos
-  + 1 balota de 1 dígito), igual que el Premio Mayor.
+- 6 balotas -> 7 cifras totales (4 balotas de 1 digito + serie de 2 digitos
+  + 1 balota de 1 digito), igual que el Premio Mayor.
 - 4 balotas -> 4 cifras totales, igual que los premios secos.
 
 cantidad_balotas se define al crear la prueba (por defecto 6) y ya no
-depende de ningún registro de Premio.
+depende de ningun registro de Premio.
 """
 from typing import TYPE_CHECKING, Optional
 from datetime import datetime
