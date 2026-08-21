@@ -2,13 +2,21 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlmodel import Session, select
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models
 from app import schemas
 
 router = APIRouter(prefix="/resultados", tags=["Resultados"])
 
+# Captura de resultados en vivo: admin y operador (quien está en cabina)
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
+
 @router.post("/", response_model=schemas.ResultadoRead)
-def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = Depends(get_session)):
+def crear_resultado(
+    resultado_in: schemas.ResultadoCreate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     sorteo = session.get(models.Sorteo, resultado_in.sorteo_id)
     if not sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
@@ -36,7 +44,12 @@ def crear_resultado(resultado_in: schemas.ResultadoCreate, session: Session = De
     return db_resultado
 
 @router.delete("/{sorteo_id}/{premio_id}")
-def eliminar_resultado(sorteo_id: int, premio_id: int, session: Session = Depends(get_session)):
+def eliminar_resultado(
+    sorteo_id: int,
+    premio_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     statement = select(models.Resultado).where(
         models.Resultado.sorteo_id == sorteo_id,
         models.Resultado.premio_id == premio_id
@@ -53,7 +66,8 @@ def actualizar_resultado(
     sorteo_id: int,
     premio_id: int,
     numeros_nuevos: str = Query(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
 ):
     statement = select(models.Resultado).where(
         models.Resultado.sorteo_id == sorteo_id,

@@ -3,13 +3,22 @@ from sqlmodel import Session, select
 from typing import List
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models
 from app import schemas
 
 router = APIRouter(prefix="/planes", tags=["Planes"])
 
+_LECTURA = (models.RolUsuario.admin, models.RolUsuario.operador, models.RolUsuario.consulta)
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
+_BORRADO = (models.RolUsuario.admin,)
+
 @router.post("/", response_model=schemas.PlanRead)
-def crear_plan(plan_in: schemas.PlanCreate, session: Session = Depends(get_session)):
+def crear_plan(
+    plan_in: schemas.PlanCreate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     db_plan = models.PlanPremios(nombre=plan_in.nombre, descripcion=plan_in.descripcion)
     session.add(db_plan)
     session.commit()
@@ -24,18 +33,30 @@ def crear_plan(plan_in: schemas.PlanCreate, session: Session = Depends(get_sessi
     return db_plan
 
 @router.get("/", response_model=List[schemas.PlanRead])
-def listar_planes(session: Session = Depends(get_session)):
+def listar_planes(
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_LECTURA)),
+):
     return session.exec(select(models.PlanPremios)).all()
 
 @router.get("/{plan_id}", response_model=schemas.PlanRead)
-def obtener_plan(plan_id: int, session: Session = Depends(get_session)):
+def obtener_plan(
+    plan_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_LECTURA)),
+):
     plan = session.get(models.PlanPremios, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
     return plan
 
 @router.put("/{plan_id}", response_model=schemas.PlanRead)
-def actualizar_plan(plan_id: int, plan_in: schemas.PlanUpdate, session: Session = Depends(get_session)):
+def actualizar_plan(
+    plan_id: int,
+    plan_in: schemas.PlanUpdate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     plan_db = session.get(models.PlanPremios, plan_id)
     if not plan_db:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
@@ -50,7 +71,11 @@ def actualizar_plan(plan_id: int, plan_in: schemas.PlanUpdate, session: Session 
     return plan_db
 
 @router.delete("/{plan_id}")
-def eliminar_plan(plan_id: int, session: Session = Depends(get_session)):
+def eliminar_plan(
+    plan_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_BORRADO)),
+):
     plan_db = session.get(models.PlanPremios, plan_id)
     if not plan_db:
         raise HTTPException(status_code=404, detail="Plan no encontrado")

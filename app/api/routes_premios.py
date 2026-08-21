@@ -2,13 +2,22 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models
 from app import schemas
 
 router = APIRouter(tags=["Premios"])
 
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
+_BORRADO = (models.RolUsuario.admin,)
+
 @router.post("/planes/{plan_id}/premios", response_model=schemas.PremioRead)
-def agregar_premio(plan_id: int, premio_in: schemas.PremioCreate, session: Session = Depends(get_session)):
+def agregar_premio(
+    plan_id: int,
+    premio_in: schemas.PremioCreate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     plan = session.get(models.PlanPremios, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
@@ -20,7 +29,12 @@ def agregar_premio(plan_id: int, premio_in: schemas.PremioCreate, session: Sessi
     return db_premio
 
 @router.put("/premios/{premio_id}", response_model=schemas.PremioRead)
-def actualizar_premio(premio_id: int, premio_in: schemas.PremioUpdate, session: Session = Depends(get_session)):
+def actualizar_premio(
+    premio_id: int,
+    premio_in: schemas.PremioUpdate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     db_premio = session.get(models.Premio, premio_id)
     if not db_premio:
         raise HTTPException(status_code=404, detail="Premio no encontrado")
@@ -35,7 +49,11 @@ def actualizar_premio(premio_id: int, premio_in: schemas.PremioUpdate, session: 
     return db_premio
 
 @router.delete("/premios/{premio_id}")
-def eliminar_premio(premio_id: int, session: Session = Depends(get_session)):
+def eliminar_premio(
+    premio_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_BORRADO)),
+):
     db_premio = session.get(models.Premio, premio_id)
     if not db_premio:
         raise HTTPException(status_code=404, detail="Premio no encontrado")
