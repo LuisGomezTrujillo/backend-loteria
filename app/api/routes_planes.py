@@ -3,13 +3,23 @@ from sqlmodel import Session, select
 from typing import List
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models
 from app import schemas
 
 router = APIRouter(prefix="/planes", tags=["Planes"])
 
+# Los GET son públicos a propósito: TVPage.js y ResultadosPage.js los
+# consultan sin login porque alimentan la pantalla de transmisión pública.
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
+_BORRADO = (models.RolUsuario.admin,)
+
 @router.post("/", response_model=schemas.PlanRead)
-def crear_plan(plan_in: schemas.PlanCreate, session: Session = Depends(get_session)):
+def crear_plan(
+    plan_in: schemas.PlanCreate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     db_plan = models.PlanPremios(nombre=plan_in.nombre, descripcion=plan_in.descripcion)
     session.add(db_plan)
     session.commit()
@@ -35,7 +45,12 @@ def obtener_plan(plan_id: int, session: Session = Depends(get_session)):
     return plan
 
 @router.put("/{plan_id}", response_model=schemas.PlanRead)
-def actualizar_plan(plan_id: int, plan_in: schemas.PlanUpdate, session: Session = Depends(get_session)):
+def actualizar_plan(
+    plan_id: int,
+    plan_in: schemas.PlanUpdate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     plan_db = session.get(models.PlanPremios, plan_id)
     if not plan_db:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
@@ -50,7 +65,11 @@ def actualizar_plan(plan_id: int, plan_in: schemas.PlanUpdate, session: Session 
     return plan_db
 
 @router.delete("/{plan_id}")
-def eliminar_plan(plan_id: int, session: Session = Depends(get_session)):
+def eliminar_plan(
+    plan_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_BORRADO)),
+):
     plan_db = session.get(models.PlanPremios, plan_id)
     if not plan_db:
         raise HTTPException(status_code=404, detail="Plan no encontrado")

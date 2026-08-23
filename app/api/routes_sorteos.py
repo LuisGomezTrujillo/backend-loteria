@@ -3,13 +3,25 @@ from sqlmodel import Session, select
 from typing import List
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models
 from app import schemas
 
 router = APIRouter(prefix="/sorteos", tags=["Sorteos"])
 
+# Los GET son públicos a propósito: TVPage.js, ResultadosPage.js y las
+# páginas de administración los consultan; el dato de "qué sorteo está
+# activo y qué premios tiene" no es sensible, es lo que sale al aire.
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
+_BORRADO = (models.RolUsuario.admin,)
+
+
 @router.post("/", response_model=schemas.SorteoRead)
-def crear_sorteo(sorteo_in: schemas.SorteoCreate, session: Session = Depends(get_session)):
+def crear_sorteo(
+    sorteo_in: schemas.SorteoCreate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     db_sorteo = models.Sorteo.model_validate(sorteo_in)
     session.add(db_sorteo)
     session.commit()
@@ -28,7 +40,12 @@ def obtener_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
     return sorteo
 
 @router.put("/{sorteo_id}", response_model=schemas.SorteoRead)
-def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoUpdate, session: Session = Depends(get_session)):
+def actualizar_sorteo(
+    sorteo_id: int,
+    sorteo_in: schemas.SorteoUpdate,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     sorteo = session.get(models.Sorteo, sorteo_id)
     if not sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
@@ -43,7 +60,11 @@ def actualizar_sorteo(sorteo_id: int, sorteo_in: schemas.SorteoUpdate, session: 
     return sorteo
 
 @router.delete("/{sorteo_id}")
-def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
+def eliminar_sorteo(
+    sorteo_id: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_BORRADO)),
+):
     db_sorteo = session.get(models.Sorteo, sorteo_id)
     if not db_sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")
@@ -61,7 +82,7 @@ def eliminar_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
         session.rollback()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# --- CONSULTA PÚBLICA ---
+# --- CONSULTA PÚBLICA (sin autenticación, para pantalla de TV / público) ---
 @router.get("/{numero_sorteo}/publico", response_model=schemas.SorteoPublicoRead, tags=["Consulta Pública"])
 def consultar_resultados_publico(numero_sorteo: str, session: Session = Depends(get_session)):
     statement = select(models.Sorteo).where(models.Sorteo.numero_sorteo == numero_sorteo)

@@ -3,11 +3,15 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
 
 from app.core.database import get_session
+from app.core.deps import require_roles
 from app import models, schemas
 from app.crud import crud_pre_sorteo as crud
 from app.crud import crud_sorteo
 
 router = APIRouter(prefix="/sorteos/{numero_sorteo}/presorteos", tags=["Pre-Sorteos"])
+
+_LECTURA = (models.RolUsuario.admin, models.RolUsuario.operador, models.RolUsuario.consulta)
+_ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
 
 
 def _obtener_sorteo_o_404(numero_sorteo: str, session: Session) -> models.Sorteo:
@@ -22,6 +26,7 @@ def crear_pre_sorteo(
     numero_sorteo: str,
     datos: schemas.PreSorteoCreate,
     session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
 ):
     sorteo = _obtener_sorteo_o_404(numero_sorteo, session)
     try:
@@ -31,13 +36,22 @@ def crear_pre_sorteo(
 
 
 @router.get("/", response_model=List[schemas.PreSorteoRead])
-def listar_pre_sorteos(numero_sorteo: str, session: Session = Depends(get_session)):
+def listar_pre_sorteos(
+    numero_sorteo: str,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_LECTURA)),
+):
     sorteo = _obtener_sorteo_o_404(numero_sorteo, session)
     return crud.listar_pre_sorteos(session, sorteo.id)
 
 
 @router.get("/{numero_prueba}", response_model=schemas.PreSorteoRead)
-def obtener_pre_sorteo(numero_sorteo: str, numero_prueba: int, session: Session = Depends(get_session)):
+def obtener_pre_sorteo(
+    numero_sorteo: str,
+    numero_prueba: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_LECTURA)),
+):
     sorteo = _obtener_sorteo_o_404(numero_sorteo, session)
     prueba = crud.obtener_pre_sorteo(session, sorteo.id, numero_prueba)
     if not prueba:
@@ -51,6 +65,7 @@ def guardar_resultado_prueba(
     numero_prueba: int,
     datos: schemas.PreSorteoUpdate,
     session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
 ):
     sorteo = _obtener_sorteo_o_404(numero_sorteo, session)
     prueba = crud.obtener_pre_sorteo(session, sorteo.id, numero_prueba)
@@ -67,7 +82,12 @@ def guardar_resultado_prueba(
 
 
 @router.delete("/{numero_prueba}")
-def eliminar_pre_sorteo(numero_sorteo: str, numero_prueba: int, session: Session = Depends(get_session)):
+def eliminar_pre_sorteo(
+    numero_sorteo: str,
+    numero_prueba: int,
+    session: Session = Depends(get_session),
+    _: models.Usuario = Depends(require_roles(*_ESCRITURA)),
+):
     sorteo = _obtener_sorteo_o_404(numero_sorteo, session)
     prueba = crud.obtener_pre_sorteo(session, sorteo.id, numero_prueba)
     if not prueba:
