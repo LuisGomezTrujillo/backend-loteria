@@ -28,9 +28,7 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 # allow_credentials=True es OBLIGATORIO a partir de ahora: el login usa una
 # cookie httpOnly (mzl_access_token) para mantener la sesión, y el navegador
 # solo la envía en peticiones cross-site si el backend responde con
-# Access-Control-Allow-Credentials: true. Por eso allow_origin_regex no
-# puede combinarse con "*" en ningún lado — ya usamos un regex explícito,
-# así que estamos bien.
+# Access-Control-Allow-Credentials: true.
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https?://(localhost:3000|frontend-loteria(-git-[\w-]+-[\w]+)?\.vercel\.app)",
@@ -38,8 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-https://frontend-risaralda.vercel.app
 
 
 # --- INCLUSIÓN DE ROUTERS ---

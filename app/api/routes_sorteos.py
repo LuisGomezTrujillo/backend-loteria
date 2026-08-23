@@ -9,8 +9,9 @@ from app import schemas
 
 router = APIRouter(prefix="/sorteos", tags=["Sorteos"])
 
-# Roles permitidos por tipo de operación
-_LECTURA = (models.RolUsuario.admin, models.RolUsuario.operador, models.RolUsuario.consulta)
+# Los GET son públicos a propósito: TVPage.js, ResultadosPage.js y las
+# páginas de administración los consultan; el dato de "qué sorteo está
+# activo y qué premios tiene" no es sensible, es lo que sale al aire.
 _ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
 _BORRADO = (models.RolUsuario.admin,)
 
@@ -28,18 +29,11 @@ def crear_sorteo(
     return db_sorteo
 
 @router.get("/", response_model=List[schemas.SorteoRead])
-def listar_sorteos(
-    session: Session = Depends(get_session),
-    _: models.Usuario = Depends(require_roles(*_LECTURA)),
-):
+def listar_sorteos(session: Session = Depends(get_session)):
     return session.exec(select(models.Sorteo)).all()
 
 @router.get("/{sorteo_id}", response_model=schemas.SorteoRead)
-def obtener_sorteo(
-    sorteo_id: int,
-    session: Session = Depends(get_session),
-    _: models.Usuario = Depends(require_roles(*_LECTURA)),
-):
+def obtener_sorteo(sorteo_id: int, session: Session = Depends(get_session)):
     sorteo = session.get(models.Sorteo, sorteo_id)
     if not sorteo:
         raise HTTPException(status_code=404, detail="Sorteo no encontrado")

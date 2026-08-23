@@ -9,7 +9,8 @@ from app import schemas
 
 router = APIRouter(prefix="/planes", tags=["Planes"])
 
-_LECTURA = (models.RolUsuario.admin, models.RolUsuario.operador, models.RolUsuario.consulta)
+# Los GET son públicos a propósito: TVPage.js y ResultadosPage.js los
+# consultan sin login porque alimentan la pantalla de transmisión pública.
 _ESCRITURA = (models.RolUsuario.admin, models.RolUsuario.operador)
 _BORRADO = (models.RolUsuario.admin,)
 
@@ -33,18 +34,11 @@ def crear_plan(
     return db_plan
 
 @router.get("/", response_model=List[schemas.PlanRead])
-def listar_planes(
-    session: Session = Depends(get_session),
-    _: models.Usuario = Depends(require_roles(*_LECTURA)),
-):
+def listar_planes(session: Session = Depends(get_session)):
     return session.exec(select(models.PlanPremios)).all()
 
 @router.get("/{plan_id}", response_model=schemas.PlanRead)
-def obtener_plan(
-    plan_id: int,
-    session: Session = Depends(get_session),
-    _: models.Usuario = Depends(require_roles(*_LECTURA)),
-):
+def obtener_plan(plan_id: int, session: Session = Depends(get_session)):
     plan = session.get(models.PlanPremios, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
