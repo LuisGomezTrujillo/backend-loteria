@@ -1,6 +1,8 @@
 """
 Dependencias de autenticación/autorización.
 
+Lee el JWT del header `Authorization: Bearer <token>` (no de una cookie).
+
 Uso en un router:
 
     from app.core.deps import get_current_user, require_roles
@@ -20,7 +22,7 @@ Uso en un router:
 """
 from typing import Optional
 import jwt
-from fastapi import Request, HTTPException, Depends, status
+from fastapi import HTTPException, Depends, status, Header
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -28,11 +30,17 @@ from app.core import security
 from app import models
 
 
+def _extraer_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    return authorization.split(" ", 1)[1].strip()
+
+
 def get_current_user(
-    request: Request,
+    authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session),
 ) -> models.Usuario:
-    token = request.cookies.get(security.COOKIE_NAME)
+    token = _extraer_token(authorization)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
 
@@ -55,12 +63,12 @@ def get_current_user(
 
 
 def get_current_user_optional(
-    request: Request,
+    authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session),
 ) -> Optional[models.Usuario]:
     """Igual que get_current_user, pero devuelve None en vez de lanzar 401.
     Se usa solo en /auth/registro para permitir el bootstrap del primer admin."""
-    token = request.cookies.get(security.COOKIE_NAME)
+    token = _extraer_token(authorization)
     if not token:
         return None
     try:

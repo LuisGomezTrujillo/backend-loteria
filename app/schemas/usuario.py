@@ -53,3 +53,10 @@ class UsuarioRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LoginResponse(UsuarioRead):
+    """Lo que devuelve POST /auth/login: los datos del usuario + el JWT que
+    el frontend debe guardar (localStorage) y reenviar en cada petición
+    como header 'Authorization: Bearer <access_token>'."""
+    access_token: str

@@ -25,15 +25,16 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 # NOTA: el regex acepta http:// o https:// para localhost (desarrollo usa
 # http), y solo https:// para el dominio de Vercel (producción).
 #
-# allow_credentials=True es OBLIGATORIO a partir de ahora: el login usa una
-# cookie httpOnly (mzl_access_token) para mantener la sesión, y el navegador
-# solo la envía en peticiones cross-site si el backend responde con
-# Access-Control-Allow-Credentials: true.
+# allow_credentials=False: la sesión ya NO usa cookies (ver app/api/routes_auth.py
+# y app/core/deps.py) — usa un JWT que el frontend manda como header
+# Authorization: Bearer <token>. Se cambió de cookie a header porque el
+# frontend (Vercel) y el backend (Render) son dominios raíz distintos, y
+# los navegadores modernos bloquean por defecto las cookies "de terceros"
+# entre sitios así, sin importar los ajustes de SameSite/Secure.
 app.add_middleware(
     CORSMiddleware,
- #   allow_origin_regex=r"https?://(localhost:3000|loteria-manizales(-git-[\w-]+-[\w]+)?\.vercel\.app)",
     allow_origin_regex=r"https?://(localhost:3000|frontend-loteria(-git-[\w-]+-[\w]+)?\.vercel\.app)",
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

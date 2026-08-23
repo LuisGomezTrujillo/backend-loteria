@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, Response
+from fastapi import APIRouter, HTTPException, Depends
 
 from sqlmodel import Session
 
@@ -10,21 +10,6 @@ from app import models, schemas
 from app.crud import crud_usuario as crud
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
-
-# Ajustes de la cookie de sesión.
-# secure=True + samesite="none" es obligatorio porque el frontend (Vercel)
-# y el backend (Render) están en dominios distintos. Ambos ya sirven HTTPS,
-# así que esto funciona en producción. En localhost (http) el navegador
-# rechazará la cookie con estos ajustes: para probar login en localhost
-# necesitas correr el frontend también bajo HTTPS, o bajar temporalmente
-# a samesite="lax"/secure=False solo en desarrollo (ver nota al final).
-COOKIE_KWARGS = dict(
-    httponly=True,
-    secure=True,
-    samesite="none",
-    max_age=security.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    path="/",
-)
 
 
 @router.post("/registro", response_model=schemas.UsuarioRead)
@@ -52,24 +37,45 @@ def registrar_usuario(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/login", response_model=schemas.UsuarioRead)
+@router.post("/login", response_model=schemas.LoginResponse)
 def login(
     datos: schemas.UsuarioLogin,
-    response: Response,
     session: Session = Depends(get_session),
 ):
+    """
+    Devuelve los datos del usuario + un JWT (access_token) en el CUERPO de
+    la respuesta. El frontend debe guardarlo (localStorage) y reenviarlo en
+    cada petición como header 'Authorization: Bearer <access_token>'.
+
+    No se usa cookie a propósito: frontend (Vercel) y backend (Render) son
+    dominios raíz distintos, y los navegadores modernos bloquean por
+    defecto las cookies "de terceros" entre sitios así, sin importar los
+    ajustes de SameSite/Secure.
+    """
     usuario = crud.autenticar(session, datos.username, datos.password)
     if not usuario:
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
     token = security.create_access_token({"sub": str(usuario.id), "rol": usuario.rol.value})
-    response.set_cookie(key=security.COOKIE_NAME, value=token, **COOKIE_KWARGS)
-    return usuario
+
+    return schemas.LoginResponse(
+        id=usuario.id,
+        username=usuario.username,
+        rol=usuario.rol,
+        activo=usuario.activo,
+        creado_en=usuario.creado_en,
+        access_token=token,
+    )
 
 
 @router.post("/logout")
-def logout(response: Response):
-    response.delete_cookie(key=security.COOKIE_NAME, path="/")
+def logout():
+    """
+    Como el JWT es stateless (no se guarda en el servidor), no hay nada que
+    invalidar acá. El logout real ocurre en el frontend, borrando el token
+    de localStorage. Este endpoint existe por simetría / por si más
+    adelante se agrega una lista de tokens revocados.
+    """
     return {"ok": True, "message": "Sesión cerrada"}
 
 

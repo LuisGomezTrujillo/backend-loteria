@@ -4,4 +4,4 @@ from .sorteo import SorteoBase, SorteoCreate, SorteoRead, SorteoUpdate, Resultad
 from .resultado import ResultadoCreate, ResultadoRead
 from .tubo import TuboBase, TuboCreate, TuboRead, TuboUpdate
 from .pre_sorteo import PreSorteoCreate, PreSorteoUpdate, PreSorteoRead
-from .usuario import UsuarioLogin, UsuarioCreate, UsuarioUpdate, UsuarioRead
+from .usuario import UsuarioLogin, UsuarioCreate, UsuarioUpdate, UsuarioRead, LoginResponse

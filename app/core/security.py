@@ -1,11 +1,16 @@
 """
-Seguridad: hashing de contraseñas (bcrypt) y JWT para la cookie de sesión.
+Seguridad: hashing de contraseñas (bcrypt) y JWT de sesión.
 
-Variables de entorno requeridas en Render (¡no las dejes con el valor
-por defecto en producción!):
+El JWT viaja como header `Authorization: Bearer <token>` (NO como cookie).
+Se eligió así porque el frontend (Vercel) y el backend (Render) están en
+dominios raíz distintos sin un dominio propio que los una — Chrome bloquea
+por defecto las cookies "de terceros" entre sitios así, sin importar los
+ajustes de SameSite/Secure. Un header explícito no tiene ese problema.
 
-    JWT_SECRET_KEY=<una cadena larga y aleatoria>
-    JWT_EXPIRE_MINUTES=480   (opcional, default 8 horas)
+Variables de entorno:
+
+    JWT_SECRET_KEY=<una cadena larga y aleatoria>   (obligatoria en producción)
+    JWT_EXPIRE_MINUTES=480                           (opcional, default 8 horas)
 """
 import os
 import bcrypt
@@ -15,8 +20,6 @@ from datetime import datetime, timedelta, timezone
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CAMBIA-ESTA-CLAVE-EN-PRODUCCION")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "480"))  # 8 horas (un turno)
-
-COOKIE_NAME = "mzl_access_token"
 
 
 def hash_password(password: str) -> str:
