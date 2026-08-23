@@ -25,8 +25,8 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 # http), y solo https:// para el dominio de Vercel (producción).
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost:3000|frontend-risaralda(-git-[\w-]+-[\w]+)?\.vercel\.app)",
- #   allow_origin_regex=r"https?://(localhost:3000|frontend-loteria(-git-[\w-]+-[\w]+)?\.vercel\.app)",
+ #   allow_origin_regex=r"https?://(localhost:3000|frontend-risaralda(-git-[\w-]+-[\w]+)?\.vercel\.app)",
+    allow_origin_regex=r"https?://(localhost:3000|frontend-loteria(-git-[\w-]+-[\w]+)?\.vercel\.app|frontend-risaralda(-git-[\w-]+-[\w]+)?\.vercel\.app)",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
