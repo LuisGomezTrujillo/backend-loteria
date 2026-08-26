@@ -33,7 +33,7 @@ app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
 # entre sitios así, sin importar los ajustes de SameSite/Secure.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost:3000|frontend-loteria(-git-[\w-]+-[\w]+)?\.vercel\.app)|loteria-risaralda(-git-[\w-]+-[\w]+)?\.vercel\.app)",
+    allow_origin_regex=r"https?://(localhost:3000|(?:frontend-loteria|loteria-risaralda)(-git-[\w-]+-[\w]+)?\.vercel\.app)",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
