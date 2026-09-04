@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     yield
 
-app = FastAPI(title="Lotería de Manizales API", lifespan=lifespan)
+app = FastAPI(title="Lotería del Risaralda API", lifespan=lifespan)
 
 # --- CONFIGURACIÓN CORS ---
 # NOTA: el regex acepta http:// o https:// para localhost (desarrollo usa
